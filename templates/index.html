@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Business Law AI Tutor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Firebase Auth Check -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCiV1NRc2py3v9ca9MVob7BYK_hntj2phg",
+            authDomain: "bcombuddy-e8708.firebaseapp.com",
+            projectId: "bcombuddy-e8708",
+            storageBucket: "bcombuddy-e8708.firebasestorage.app",
+            messagingSenderId: "775617562806",
+            appId: "1:775617562806:web:87e60875a784ff9d073e17",
+            measurementId: "G-W4W8YBRMDE"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Check authentication status
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                // User is not logged in, redirect to login page
+                window.location.href = '/login';
+            } else {
+                // User is logged in, store UID and continue with app initialization
+                window.currentUserUID = user.uid;
+                console.log('User authenticated with UID:', user.uid);
+                
+                // Initialize the app now that we have the user UID
+                if (window.appInitialized) {
+                    console.log('App already initialized, reloading data with user UID');
+                    loadDataFromFirestore();
+                    loadChapters();
+                }
+            }
+        });
+    </script>
+    <div class="app-container">
+        <!-- Left Sidebar -->
+        <div class="sidebar left-sidebar">
+            <!-- Top-left: App Title -->
+            <div class="sidebar-header">
+                <div class="app-title">
+                    BUSINESS LAW A.I. TUTOR
+                </div>
+                <button class="logout-btn" onclick="logout()" title="Logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+
+            <!-- Chapters Dropdown -->
+            <div class="dropdown-section">
+                <div class="dropdown-header" onclick="toggleDropdown('chapters')">
+                    <span class="dropdown-label" id="chaptersLabel">Chapters</span>
+                    <i class="fas fa-chevron-down dropdown-arrow" id="chaptersArrow"></i>
+                </div>
+                <div class="dropdown-content" id="chaptersDropdown">
+                    <div class="search-container" id="chaptersSearchContainer">
+                        <input type="text" id="chaptersSearch" placeholder="Search chapters..." class="dropdown-search">
+                    </div>
+                    <div class="dropdown-list" id="chaptersList">
+                        <!-- Chapters will be loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chats Section -->
+            <div class="chats-section">
+                <div class="chats-header">
+                    <h3><i class="fas fa-comments"></i> Chats</h3>
+                    <button class="new-chat-btn" onclick="createNewChat()" title="New Chat">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                <div class="chats-list" id="chatsList">
+                    <!-- Chats will be loaded dynamically -->
+                    <div class="empty-state">
+                        <i class="fas fa-comments"></i>
+                        <p>No chats yet</p>
+                        <small>Click "New Chat" to start a conversation</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom-left: Chat History button -->
+            <div class="sidebar-footer">
+                <button class="history-btn" onclick="toggleHistoryPanel()">
+                    <i class="fas fa-history"></i> Chat History
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Chat Messages Container -->
+            <div class="chat-container" id="chatContainer">
+                <!-- Welcome message -->
+                <div class="message ai-message" data-message-id="welcome">
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="message-content-container">
+                        <div class="message-content">
+                            <h3>Welcome to Business Law AI Tutor!</h3>
+                            <p>I'm here to help you understand Business Law concepts. You can:</p>
+                            <ul>
+                                <li>Ask questions about any Business Law topic</li>
+                                <li>Select a specific chapter from the sidebar for focused learning</li>
+                                <li>Upload PDF or image files for context-specific answers</li>
+                                <li>Use voice input for hands-free interaction</li>
+                            </ul>
+                            <p>What would you like to learn about today?</p>
+                        </div>
+                        <div class="message-menu" onclick="toggleMessageMenu('welcome', event)" title="Message options">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </div>
+                    </div>
+                    <div class="message-timestamp">Just now</div>
+                </div>
+            </div>
+
+            <!-- Scroll to bottom button (hidden by default) -->
+            <button class="scroll-bottom-btn" id="scrollBottomBtn" onclick="scrollToBottom()">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+
+            <!-- Suggested Questions (above prompt bar) -->
+            <div class="suggested-questions" id="suggestedQuestions">
+                <!-- Suggestions will be loaded dynamically -->
+            </div>
+
+            <!-- Prompt Bar -->
+            <div class="prompt-bar">
+                <!-- File upload button -->
+                <button class="upload-btn" onclick="triggerFileUpload()" title="Upload PDF or Image">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.gif,.bmp,.tiff" style="display: none;">
+
+                <!-- Text input -->
+                <div class="input-container">
+                    <!-- File attachments container -->
+                    <div class="file-attachments" id="fileAttachments" style="display: none;">
+                        <!-- File attachment bubbles will be added here -->
+                    </div>
+                    <textarea 
+                        id="messageInput" 
+                        placeholder="Ask me anything about Business Law..."
+                        rows="1"
+                        onkeydown="handleKeyDown(event)"
+                        oninput="autoResize(this)"
+                    ></textarea>
+                </div>
+
+                <!-- Voice input button -->
+                <button class="voice-btn" onclick="startVoiceInput()" title="Voice Input">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <input type="file" id="audioInput" accept="audio/*" style="display: none;">
+
+                <!-- Send button -->
+                <button class="send-btn" onclick="sendMessage()" title="Send Message">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Sidebar -->
+        <div class="sidebar right-sidebar">
+                       <!-- Bookmarks Section -->
+           <div class="sidebar-section">
+               <div class="section-header">
+                   <h3><i class="fas fa-bookmark"></i> Bookmarks</h3>
+               </div>
+               <div class="search-container">
+                   <input type="text" id="bookmarksSearch" placeholder="Search bookmarks..." class="dropdown-search">
+               </div>
+               <div class="bookmarks-list" id="bookmarksList">
+                   <!-- Bookmarks will be added dynamically -->
+                   <div class="empty-state">
+                       <i class="fas fa-bookmark"></i>
+                       <p>No bookmarks yet</p>
+                       <small>Click the 3-dot menu on any message to bookmark it</small>
+                   </div>
+               </div>
+           </div>
+
+            <!-- Uploaded Files Section -->
+            <div class="sidebar-section">
+                <div class="section-header">
+                    <h3><i class="fas fa-file-upload"></i> Uploaded Files</h3>
+                </div>
+                <div class="uploaded-files-list" id="uploadedFilesList">
+                    <!-- Uploaded files will be added dynamically -->
+                    <div class="empty-state">
+                        <i class="fas fa-file-upload"></i>
+                        <p>No files uploaded</p>
+                        <small>Upload files to see them here</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Panel (hidden by default) -->
+        <div class="history-panel" id="historyPanel">
+            <div class="history-header">
+                <h3>Chat History</h3>
+                <button class="close-btn" onclick="toggleHistoryPanel()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="history-content" id="historyContent">
+                <!-- History will be loaded dynamically -->
+            </div>
+            <div class="history-footer">
+                <button class="export-btn" onclick="exportHistory()">
+                    <i class="fas fa-download"></i> Export
+                </button>
+                <button class="clear-btn" onclick="clearHistory()">
+                    <i class="fas fa-trash"></i> Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading overlay -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Processing...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

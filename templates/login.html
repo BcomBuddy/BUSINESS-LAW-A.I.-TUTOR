@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Business Law AI Tutor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1>Welcome Back</h1>
+                <p>Sign in to your Business Law AI Tutor account</p>
+            </div>
+
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                        <button type="button" class="password-toggle" onclick="togglePassword()">
+                            <i class="fas fa-eye" id="passwordEye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="forgot-password">
+                    <a href="#" onclick="resetPassword()">Forgot Password?</a>
+                </div>
+
+                <button type="submit" class="login-btn">
+                    <span class="btn-text">Sign In</span>
+                    <div class="btn-loader" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </button>
+            </form>
+
+            <div class="divider">
+                <span>or</span>
+            </div>
+
+            <button class="google-btn" onclick="signInWithGoogle()">
+                <i class="fab fa-google"></i>
+                <span>Sign in with Google</span>
+            </button>
+
+            <div class="signup-link">
+                <p>Don't have an account? <a href="https://bcombuddy.netlify.app/signup" target="_blank">Create new account</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCiV1NRc2py3v9ca9MVob7BYK_hntj2phg",
+            authDomain: "bcombuddy-e8708.firebaseapp.com",
+            projectId: "bcombuddy-e8708",
+            storageBucket: "bcombuddy-e8708.firebasestorage.app",
+            messagingSenderId: "775617562806",
+            appId: "1:775617562806:web:87e60875a784ff9d073e17",
+            measurementId: "G-W4W8YBRMDE"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        // Email/Password Login
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const loginBtn = document.querySelector('.login-btn');
+            const btnText = document.querySelector('.btn-text');
+            const btnLoader = document.querySelector('.btn-loader');
+
+            // Show loading state
+            btnText.style.display = 'none';
+            btnLoader.style.display = 'flex';
+            loginBtn.disabled = true;
+
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                console.log('User signed in:', userCredential.user);
+                
+                // Redirect to main app
+                window.location.href = '/';
+            } catch (error) {
+                console.error('Login error:', error);
+                showError(getErrorMessage(error.code));
+            } finally {
+                // Hide loading state
+                btnText.style.display = 'inline';
+                btnLoader.style.display = 'none';
+                loginBtn.disabled = false;
+            }
+        });
+
+        // Google Sign In
+        window.signInWithGoogle = async () => {
+            const googleBtn = document.querySelector('.google-btn');
+            const originalText = googleBtn.innerHTML;
+            
+            googleBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Signing in...</span>';
+            googleBtn.disabled = true;
+
+            try {
+                const result = await signInWithPopup(auth, provider);
+                console.log('Google sign in successful:', result.user);
+                
+                // Redirect to main app
+                window.location.href = '/';
+            } catch (error) {
+                console.error('Google sign in error:', error);
+                showError(getErrorMessage(error.code));
+            } finally {
+                googleBtn.innerHTML = originalText;
+                googleBtn.disabled = false;
+            }
+        };
+
+        // Password Reset
+        window.resetPassword = async () => {
+            const email = document.getElementById('email').value;
+            
+            if (!email) {
+                showError('Please enter your email address first');
+                return;
+            }
+
+            // Show loading state
+            const forgotLink = document.querySelector('.forgot-password a');
+            const originalText = forgotLink.textContent;
+            forgotLink.textContent = 'Sending...';
+            forgotLink.style.pointerEvents = 'none';
+
+            try {
+                await sendPasswordResetEmail(auth, email);
+                showSuccess('Password reset email sent! Check your inbox and spam folder.');
+                console.log('Password reset email sent successfully to:', email);
+            } catch (error) {
+                console.error('Password reset error:', error);
+                
+                // Handle specific error cases
+                if (error.code === 'auth/user-not-found') {
+                    showError('No account found with this email address. Please check your email or create a new account.');
+                } else if (error.code === 'auth/invalid-email') {
+                    showError('Please enter a valid email address.');
+                } else if (error.code === 'auth/too-many-requests') {
+                    showError('Too many password reset attempts. Please try again later.');
+                } else {
+                    showError(getErrorMessage(error.code));
+                }
+            } finally {
+                // Reset button state
+                forgotLink.textContent = originalText;
+                forgotLink.style.pointerEvents = 'auto';
+            }
+        };
+
+        // Password Toggle
+        window.togglePassword = () => {
+            const passwordInput = document.getElementById('password');
+            const passwordEye = document.getElementById('passwordEye');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                passwordEye.classList.remove('fa-eye');
+                passwordEye.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                passwordEye.classList.remove('fa-eye-slash');
+                passwordEye.classList.add('fa-eye');
+            }
+        };
+
+        // Error message mapping
+        function getErrorMessage(errorCode) {
+            const errorMessages = {
+                'auth/user-not-found': 'No account found with this email address.',
+                'auth/wrong-password': 'Incorrect password. Please try again.',
+                'auth/invalid-email': 'Please enter a valid email address.',
+                'auth/user-disabled': 'This account has been disabled.',
+                'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
+                'auth/network-request-failed': 'Network error. Please check your connection.',
+                'auth/popup-closed-by-user': 'Sign-in was cancelled.',
+                'auth/cancelled-popup-request': 'Sign-in was cancelled.'
+            };
+            return errorMessages[errorCode] || 'An error occurred. Please try again.';
+        }
+
+        // Show error message
+        function showError(message) {
+            // Remove existing alerts
+            const existingAlert = document.querySelector('.alert');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-error';
+            alert.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+            
+            document.querySelector('.login-form').insertBefore(alert, document.querySelector('.form-group'));
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // Show success message
+        function showSuccess(message) {
+            const existingAlert = document.querySelector('.alert');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-success';
+            alert.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+            
+            document.querySelector('.login-form').insertBefore(alert, document.querySelector('.form-group'));
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // Check if user is already logged in
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // User is already logged in, redirect to main app
+                window.location.href = '/';
+            }
+        });
+    </script>
+</body>
+</html>
