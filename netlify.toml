@@ -2,7 +2,6 @@
   command = "pip install -r requirements.txt"
   functions = "netlify/functions"
   publish = "."
-  environment = { PYTHON_VERSION = "3.9" }
 
 [build.environment]
   PYTHON_VERSION = "3.9"
