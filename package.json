@@ -1,0 +1,15 @@
+{
+  "name": "business-law-ai-tutor",
+  "version": "1.0.0",
+  "description": "Business Law AI Tutor - Python Flask Application",
+  "main": "app.py",
+  "scripts": {
+    "build": "pip install -r requirements.txt"
+  },
+  "engines": {
+    "python": "3.9"
+  },
+  "keywords": ["python", "flask", "ai", "tutor"],
+  "author": "BcomBuddy",
+  "license": "MIT"
+}
