@@ -240,14 +240,36 @@ def chat():
             file_context = "\n\n=== ATTACHED FILES CONTENT ===\n"
             for f in attached_files:
                 filename = f.get('name', '')
+                content = ""
+                
+                # Try to get content from session first
                 if filename in session.get('chapter_context', {}):
                     content = session['chapter_context'][filename]
+                # If not in session, try to get from global PDF context
+                elif hasattr(g, "latest_pdf_content") and g.latest_pdf_content:
+                    content = g.latest_pdf_content
+                # If still no content, try to get from Firebase
+                else:
+                    try:
+                        from firebase_config import get_upload_by_filename
+                        user_id = get_user_id()
+                        upload_data = get_upload_by_filename(user_id, filename)
+                        if upload_data and 'extractedText' in upload_data:
+                            content = upload_data['extractedText']
+                    except Exception as e:
+                        logger.warning(f"Could not retrieve content for {filename}: {str(e)}")
+                
+                if content:
                     file_context += f"\n📄 FILE: {filename}\nCONTENT:\n{content}\nEND OF FILE\n"
                     structured_file_content.append({
                         'filename': filename,
                         'content': content,
                         'type': f.get('type', 'text')
                     })
+                else:
+                    file_context += f"\n📄 FILE: {filename}\nCONTENT: File uploaded but content not available\nEND OF FILE\n"
+                    logger.warning(f"No content found for attached file: {filename}")
+            
             file_context += "\n=== END OF ATTACHED FILES ===\n"
 
         # Build global context dynamically (PDF + chapters)

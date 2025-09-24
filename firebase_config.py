@@ -1121,3 +1121,27 @@ def delete_followup_assistant_message(user_id: str, chat_id: str, user_message_i
         logger.error(f"Failed to delete followup assistant message: {str(e)}")
         return False
 
+def get_upload_by_filename(user_id, filename):
+    """Get upload data by filename for a specific user."""
+    try:
+        if not db:
+            logger.error("Firebase not initialized")
+            return None
+        
+        uploads_ref = db.collection('users').document(user_id).collection('uploads')
+        query = uploads_ref.where('fileName', '==', filename).limit(1)
+        docs = query.get()
+        
+        if docs:
+            doc = docs[0]
+            data = doc.to_dict()
+            data['id'] = doc.id
+            return data
+        else:
+            logger.warning(f"No upload found for filename: {filename}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"Failed to get upload by filename: {str(e)}")
+        return None
+
