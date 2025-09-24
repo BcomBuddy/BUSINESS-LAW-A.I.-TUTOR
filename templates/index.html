@@ -246,5 +246,39 @@
     <!-- JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    
+    <!-- Logout Function -->
+    <script type="module">
+        import { getAuth, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        
+        // Firebase configuration (same as above)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCiV1NRc2py3v9ca9MVob7BYK_hntj2phg",
+            authDomain: "bcombuddy-e8708.firebaseapp.com",
+            projectId: "bcombuddy-e8708",
+            storageBucket: "bcombuddy-e8708.firebasestorage.app",
+            messagingSenderId: "775617562806",
+            appId: "1:775617562806:web:87e60875a784ff9d073e17",
+            measurementId: "G-W4W8YBRMDE"
+        };
+        
+        const auth = getAuth();
+        
+        // Logout function
+        window.logout = async () => {
+            try {
+                await signOut(auth);
+                console.log('User signed out successfully');
+                // Clear any local storage
+                localStorage.clear();
+                sessionStorage.clear();
+                // Redirect to login page
+                window.location.href = '/login';
+            } catch (error) {
+                console.error('Logout error:', error);
+                alert('Error logging out. Please try again.');
+            }
+        };
+    </script>
 </body>
 </html>

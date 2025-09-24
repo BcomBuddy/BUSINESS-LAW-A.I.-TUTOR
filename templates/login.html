@@ -259,6 +259,28 @@
                 window.location.href = '/';
             }
         });
+
+        // Add logout functionality
+        window.logout = async () => {
+            try {
+                await auth.signOut();
+                console.log('User signed out successfully');
+                // Force reload to clear any cached data
+                window.location.reload();
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        };
+
+        // Add logout button to the page (for testing)
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add a logout button for testing (remove in production)
+            const logoutBtn = document.createElement('button');
+            logoutBtn.innerHTML = 'Logout (Test)';
+            logoutBtn.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 1000; background: red; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;';
+            logoutBtn.onclick = window.logout;
+            document.body.appendChild(logoutBtn);
+        });
     </script>
 </body>
 </html>
