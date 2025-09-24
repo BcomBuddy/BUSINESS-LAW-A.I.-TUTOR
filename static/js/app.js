@@ -998,9 +998,12 @@ async function sendMessage() {
     messageInput.value = '';
     messageInput.style.height = 'auto';
     
-    // Clear attached files immediately
-    attachedFiles = [];
-    renderFileAttachments();
+    // Store attached files before clearing them
+    const filesToSend = [...attachedFiles];
+    
+    // Don't clear attached files immediately - let them show in UI
+    // attachedFiles = [];
+    // renderFileAttachments();
     
     try {
         let response, data;
@@ -1083,10 +1086,12 @@ async function sendMessage() {
             };
             
             // Add attached files information with enhanced metadata
-            if (attachedFiles.length > 0) {
-                requestBody.attachedFiles = attachedFiles.map(file => {
+            console.log('Attached files before sending:', filesToSend);
+            if (filesToSend.length > 0) {
+                requestBody.attachedFiles = filesToSend.map(file => {
                     // Find matching uploaded file for additional metadata
                     const uploadedFile = uploadedFiles.find(uf => uf.name === file.name);
+                    console.log('Mapping file:', file.name, 'uploadedFile:', uploadedFile);
                     return {
                     name: file.name,
                         type: file.type,
@@ -1095,6 +1100,9 @@ async function sendMessage() {
                         size: uploadedFile ? uploadedFile.size : null
                     };
                 });
+                console.log('Final attachedFiles in request:', requestBody.attachedFiles);
+            } else {
+                console.log('No attached files to send');
             }
             
             const { url, options } = addUserUIDToRequest('/api/chat', {
@@ -1146,6 +1154,10 @@ async function sendMessage() {
             
             // Scroll to bottom
             scrollToBottom();
+            
+            // Clear attached files after successful response
+            attachedFiles = [];
+            renderFileAttachments();
             
         } else {
             showError(data.error || 'Failed to get response');

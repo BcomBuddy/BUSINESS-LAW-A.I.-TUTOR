@@ -156,39 +156,45 @@ def upload_file():
             try:
                 extracted_text = extract_text_from_pdf(file)
                 logger.info(f"Direct extraction successful: {len(extracted_text)} characters")
+                logger.info(f"Direct extraction preview: {extracted_text[:200]}...")
             except Exception as e:
                 logger.warning(f"Direct extraction failed: {str(e)}")
+                extracted_text = ""
             
-            # Method 2: If direct extraction failed or returned little text, try OCR
-            if not extracted_text or len(extracted_text.strip()) < 50:
-                logger.info("Attempting OCR extraction for PDF")
-                try:
-                    file.seek(0)
-                    # Convert PDF pages to images and OCR them
-                    import fitz
-                    pdf_bytes = file.read()
-                    file.seek(0)
-                    pdf_stream = BytesIO(pdf_bytes)
+            # Method 2: Always try OCR as fallback for better text extraction
+            logger.info("Attempting OCR extraction for PDF")
+            try:
+                file.seek(0)
+                # Convert PDF pages to images and OCR them
+                import fitz
+                pdf_bytes = file.read()
+                file.seek(0)
+                pdf_stream = BytesIO(pdf_bytes)
+                
+                with fitz.open(stream=pdf_stream, filetype="pdf") as pdf:
+                    ocr_text = ""
+                    for page_num in range(min(pdf.page_count, 10)):  # Limit to first 10 pages
+                        page = pdf.load_page(page_num)
+                        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # 2x zoom for better OCR
+                        img_data = pix.tobytes("png")
+                        img = Image.open(BytesIO(img_data))
+                        page_text = pytesseract.image_to_string(img, config='--psm 6')
+                        logger.info(f"OCR page {page_num + 1}: extracted {len(page_text)} characters")
+                        if page_text.strip():
+                            ocr_text += page_text + "\n"
                     
-                    with fitz.open(stream=pdf_stream, filetype="pdf") as pdf:
-                        ocr_text = ""
-                        for page_num in range(min(pdf.page_count, 10)):  # Limit to first 10 pages
-                            page = pdf.load_page(page_num)
-                            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # 2x zoom for better OCR
-                            img_data = pix.tobytes("png")
-                            img = Image.open(BytesIO(img_data))
-                            page_text = pytesseract.image_to_string(img, config='--psm 6')
-                            if page_text.strip():
-                                ocr_text += page_text + "\n"
-                        
-                        if ocr_text.strip():
-                            extracted_text = ocr_text
-                            logger.info(f"OCR extraction successful: {len(extracted_text)} characters")
-                except Exception as e:
-                    logger.error(f"OCR extraction failed: {str(e)}")
+                    # Use OCR result if it's better than direct extraction
+                    if ocr_text.strip() and len(ocr_text.strip()) > len(extracted_text.strip()):
+                        extracted_text = ocr_text
+                        logger.info(f"OCR extraction successful: {len(extracted_text)} characters")
+                        logger.info(f"OCR extraction preview: {extracted_text[:200]}...")
+                    else:
+                        logger.info(f"OCR extraction completed but direct extraction was better: {len(extracted_text)} vs {len(ocr_text.strip())}")
+            except Exception as e:
+                logger.error(f"OCR extraction failed: {str(e)}")
             
-            # Method 3: If still no text, try with different OCR settings
-            if not extracted_text or len(extracted_text.strip()) < 50:
+            # Method 3: If still no good text, try with different OCR settings
+            if not extracted_text or len(extracted_text.strip()) < 100:
                 logger.info("Attempting OCR with different settings")
                 try:
                     file.seek(0)
@@ -221,6 +227,8 @@ def upload_file():
             
             if not extracted_text or len(extracted_text.strip()) < 10:
                 logger.warning(f"All extraction methods failed for {filename}")
+                logger.warning(f"Final extracted text length: {len(extracted_text) if extracted_text else 0}")
+                logger.warning(f"Final extracted text preview: {extracted_text[:200] if extracted_text else 'None'}")
                 extracted_text = f"PDF file '{filename}' uploaded but text extraction failed. The file may be encrypted, corrupted, or contain only images without text."
 
         elif file_extension in ALLOWED_EXTENSIONS['image']:
@@ -235,7 +243,10 @@ def upload_file():
         if extracted_text:
             store_file_content(filename, extracted_text)
             set_global_pdf_context(extracted_text)  # <--- NEW LINE
+            session.modified = True  # Mark session as modified
             logger.info(f"Stored file content in session for {filename}, session keys: {list(session.get('chapter_context', {}).keys())}")
+            logger.info(f"Content length stored: {len(extracted_text)} characters")
+            logger.info(f"Content preview: {extracted_text[:200]}...")
         if chapter and extracted_text:
             store_chapter_context(chapter, extracted_text)
 
@@ -248,7 +259,7 @@ def upload_file():
                 'fileSize': file_size,
                 'contentLength': len(extracted_text),
                 'chapter': chapter if chapter else None,
-                'extractedText': extracted_text[:1000] + "..." if len(extracted_text) > 1000 else extracted_text,
+                'extractedText': extracted_text,  # Store full text, not truncated
                 'fileUrl': f'/api/uploads/{user_id}/file'  # Set the file serving URL
             }
             upload_id = save_upload(user_id, upload_data)
