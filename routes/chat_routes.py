@@ -119,7 +119,7 @@ CHAPTER_QUESTIONS = {
 def get_system_prompt(chapter=None, user_message=None, has_attached_files=False):
     base_prompt = (
         "You are a professional Business Law tutor. "
-        "By default, give concise, student-friendly answers in 2–3 sentences. "
+        "By default, give concise, student-friendly answers in 2–6 sentences. "
         "Use simple language and clear examples."
     )
 

@@ -12,6 +12,7 @@ from flask import Blueprint, request, jsonify, session, current_app, send_file
 from werkzeug.utils import secure_filename
 import pytesseract
 from PIL import Image
+from io import BytesIO
 
 # Utility to keep the latest uploaded content accessible for the chat
 from flask import g
@@ -147,11 +148,80 @@ def upload_file():
         if file_extension in ALLOWED_EXTENSIONS['pdf']:
             file_type = "pdf"
             logger.info(f"Extracting text from PDF: {filename}")
-            extracted_text = extract_text_from_pdf(file)
-            if not extracted_text:
-                logger.warning("Primary extraction empty, attempting OCR fallback")
-                file.seek(0)
-                extracted_text = pytesseract.image_to_string(Image.open(file))
+            
+            # Try multiple extraction methods
+            extracted_text = ""
+            
+            # Method 1: Direct text extraction
+            try:
+                extracted_text = extract_text_from_pdf(file)
+                logger.info(f"Direct extraction successful: {len(extracted_text)} characters")
+            except Exception as e:
+                logger.warning(f"Direct extraction failed: {str(e)}")
+            
+            # Method 2: If direct extraction failed or returned little text, try OCR
+            if not extracted_text or len(extracted_text.strip()) < 50:
+                logger.info("Attempting OCR extraction for PDF")
+                try:
+                    file.seek(0)
+                    # Convert PDF pages to images and OCR them
+                    import fitz
+                    pdf_bytes = file.read()
+                    file.seek(0)
+                    pdf_stream = BytesIO(pdf_bytes)
+                    
+                    with fitz.open(stream=pdf_stream, filetype="pdf") as pdf:
+                        ocr_text = ""
+                        for page_num in range(min(pdf.page_count, 10)):  # Limit to first 10 pages
+                            page = pdf.load_page(page_num)
+                            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # 2x zoom for better OCR
+                            img_data = pix.tobytes("png")
+                            img = Image.open(BytesIO(img_data))
+                            page_text = pytesseract.image_to_string(img, config='--psm 6')
+                            if page_text.strip():
+                                ocr_text += page_text + "\n"
+                        
+                        if ocr_text.strip():
+                            extracted_text = ocr_text
+                            logger.info(f"OCR extraction successful: {len(extracted_text)} characters")
+                except Exception as e:
+                    logger.error(f"OCR extraction failed: {str(e)}")
+            
+            # Method 3: If still no text, try with different OCR settings
+            if not extracted_text or len(extracted_text.strip()) < 50:
+                logger.info("Attempting OCR with different settings")
+                try:
+                    file.seek(0)
+                    pdf_bytes = file.read()
+                    file.seek(0)
+                    pdf_stream = BytesIO(pdf_bytes)
+                    
+                    with fitz.open(stream=pdf_stream, filetype="pdf") as pdf:
+                        ocr_text = ""
+                        for page_num in range(min(pdf.page_count, 5)):  # Limit to first 5 pages
+                            page = pdf.load_page(page_num)
+                            pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))  # 3x zoom
+                            img_data = pix.tobytes("png")
+                            img = Image.open(BytesIO(img_data))
+                            # Try different OCR modes
+                            for psm in [6, 3, 1]:
+                                try:
+                                    page_text = pytesseract.image_to_string(img, config=f'--psm {psm}')
+                                    if page_text.strip() and len(page_text.strip()) > 20:
+                                        ocr_text += page_text + "\n"
+                                        break
+                                except:
+                                    continue
+                        
+                        if ocr_text.strip():
+                            extracted_text = ocr_text
+                            logger.info(f"Advanced OCR extraction successful: {len(extracted_text)} characters")
+                except Exception as e:
+                    logger.error(f"Advanced OCR extraction failed: {str(e)}")
+            
+            if not extracted_text or len(extracted_text.strip()) < 10:
+                logger.warning(f"All extraction methods failed for {filename}")
+                extracted_text = f"PDF file '{filename}' uploaded but text extraction failed. The file may be encrypted, corrupted, or contain only images without text."
 
         elif file_extension in ALLOWED_EXTENSIONS['image']:
             file_type = "image"
