@@ -111,7 +111,7 @@ if __name__ == '__main__':
     # Get configuration from environment variables
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     host = os.environ.get('FLASK_HOST', '0.0.0.0')
-    port = int(os.environ.get('FLASK_PORT', 5000))
+    port = int(os.environ.get('PORT', os.environ.get('FLASK_PORT', 5000)))
     
     logger.info(f"Starting Business Law AI Tutor on {host}:{port}")
     logger.info(f"Debug mode: {debug_mode}")

@@ -547,6 +547,75 @@ To migrate from in-memory storage to Firebase:
 3. Restart the application with Firebase enabled
 4. Data will be automatically stored in Firestore going forward
 
+## Deployment
+
+### Deploy to Render (Recommended)
+
+1. **Prepare your repository**
+   ```bash
+   # Make sure all files are committed
+   git add .
+   git commit -m "Prepare for Render deployment"
+   git push origin main
+   ```
+
+2. **Create Render account**
+   - Go to [render.com](https://render.com)
+   - Sign up with your GitHub account
+   - Connect your repository
+
+3. **Create Web Service**
+   - Click "New +" → "Web Service"
+   - Connect your GitHub repository
+   - Choose your repository: `A.I. Tutor`
+
+4. **Configure the service**
+   - **Name**: `ai-tutor` (or your preferred name)
+   - **Environment**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `python app.py`
+   - **Plan**: Free (or paid for production)
+
+5. **Set Environment Variables**
+   In the Render dashboard, go to "Environment" tab and add all variables from your `.env` file:
+   ```
+   FIREBASE_PROJECT_ID=your-project-id
+   FIREBASE_PRIVATE_KEY_ID=your-private-key-id
+   FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYour-Private-Key-Here\n-----END PRIVATE KEY-----\n"
+   FIREBASE_CLIENT_EMAIL=your-service-account@your-project.iam.gserviceaccount.com
+   FIREBASE_CLIENT_ID=your-client-id
+   FIREBASE_AUTH_URI=https://accounts.google.com/o/oauth2/auth
+   FIREBASE_TOKEN_URI=https://oauth2.googleapis.com/token
+   FIREBASE_AUTH_PROVIDER_X509_CERT_URL=https://www.googleapis.com/oauth2/v1/certs
+   FIREBASE_CLIENT_X509_CERT_URL=https://www.googleapis.com/robot/v1/metadata/x509/your-service-account%40your-project.iam.gserviceaccount.com
+   GROQ_API_KEY=your-groq-api-key
+   GEMINI_API_KEY=your-gemini-api-key
+   SECRET_KEY=your-secret-key-here
+   FLASK_DEBUG=False
+   FLASK_HOST=0.0.0.0
+   FLASK_PORT=5000
+   ```
+
+6. **Deploy**
+   - Click "Create Web Service"
+   - Render will automatically build and deploy your app
+   - Your app will be available at: `https://your-app-name.onrender.com`
+
+### Alternative Deployment Options
+
+- **Heroku**: Use the included `Procfile` and `requirements.txt`
+- **Railway**: Similar to Render, supports Python apps
+- **PythonAnywhere**: Python-focused hosting platform
+- **AWS/GCP/Azure**: For enterprise deployments
+
+### Production Considerations
+
+- **Environment Variables**: Never commit `.env` files to Git
+- **Firebase Security**: Configure appropriate Firestore security rules
+- **Monitoring**: Set up logging and monitoring
+- **Backup**: Implement regular data backup strategies
+- **SSL**: Ensure HTTPS is enabled for production
+
 ## Contributing
 
 1. Fork the repository
