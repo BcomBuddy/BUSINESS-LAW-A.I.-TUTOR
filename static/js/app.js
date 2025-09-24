@@ -1001,7 +1001,7 @@ async function sendMessage() {
     // Store attached files before clearing them
     const filesToSend = [...attachedFiles];
     
-    // Don't clear attached files immediately - let them show in UI
+    // Don't clear attached files immediately - let them show while processing
     // attachedFiles = [];
     // renderFileAttachments();
     
@@ -1130,7 +1130,10 @@ async function sendMessage() {
             
                 // Add structured file content if available
                 if (data.structuredFileContent && data.structuredFileContent.length > 0) {
-                    addStructuredFileContent(data.structuredFileContent, data.aiMessageId);
+                    // Add a delay to ensure the message is rendered first
+                    setTimeout(() => {
+                        addFileContentToMessage(data.aiMessageId, data.structuredFileContent);
+                    }, 200);
                 }
             
             // Save Q&A pair to structured history
@@ -1571,6 +1574,40 @@ function addFileContentMessage(fileName, fileContent, fileType, parentMessageId,
     messageIdMap.set(`${parentMessageId}_file_content_${fileIndex}`, true);
 }
 
+// Add file content directly to the main message
+function addFileContentToMessage(messageId, fileContents) {
+    const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!messageElement) {
+        console.error(`Message element not found for ID: ${messageId}`);
+        return;
+    }
+    
+    const messageContent = messageElement.querySelector('.message-content');
+    if (!messageContent) {
+        console.error(`Message content not found for ID: ${messageId}`);
+        return;
+    }
+    
+    fileContents.forEach((fileData, index) => {
+        // Create file content display
+        const fileContentDiv = document.createElement('div');
+        fileContentDiv.className = 'file-content-display';
+        fileContentDiv.innerHTML = `
+            <div class="file-content-header">
+                <i class="fas fa-file-alt"></i>
+                <strong>File Content: ${fileData.filename}</strong>
+            </div>
+            <p>Here's the content from the uploaded file:</p>
+            <div class="file-content-wrapper">
+                <div class="file-content-text">${fileData.content.replace(/\n/g, '<br>')}</div>
+            </div>
+        `;
+        
+        // Insert at the beginning of the message content
+        messageContent.insertBefore(fileContentDiv, messageContent.firstChild);
+    });
+}
+
 // Add structured file content in ChatGPT-like format
 function addStructuredFileContent(fileContents, parentMessageId) {
     fileContents.forEach((fileData, index) => {
@@ -1640,9 +1677,17 @@ function addStructuredFileContent(fileContents, parentMessageId) {
         contentCellContainer.appendChild(contentCellContent);
         contentCellDiv.appendChild(contentCellContainer);
         
-        // Add both cells to chat container
-        chatContainer.appendChild(explanationDiv);
-        chatContainer.appendChild(contentCellDiv);
+        // Find the parent message and insert file content after it
+        const parentMessage = document.querySelector(`[data-message-id="${parentMessageId}"]`);
+        if (parentMessage) {
+            // Insert file content immediately after the parent message
+            parentMessage.parentNode.insertBefore(explanationDiv, parentMessage.nextSibling);
+            parentMessage.parentNode.insertBefore(contentCellDiv, explanationDiv.nextSibling);
+        } else {
+            // Fallback: add to end of chat container
+            chatContainer.appendChild(explanationDiv);
+            chatContainer.appendChild(contentCellDiv);
+        }
         
         // Track message IDs
         messageIdMap.set(`${parentMessageId}_file_explanation_${index}`, true);
@@ -4070,7 +4115,8 @@ async function loadChatMessages(chatId) {
                     // Add structured file content to AI messages
                     if (msg.sender === 'tutor' && msg.structuredFileContent) {
                         console.log('Found structured file content in AI message:', msg.structuredFileContent);
-                        addStructuredFileContent(msg.structuredFileContent, messageId);
+                        // Instead of creating separate elements, add the file content to the main message
+                        addFileContentToMessage(messageId, msg.structuredFileContent);
                     }
                     
                     messageIdMap.set(messageId, true);
