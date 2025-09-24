@@ -994,6 +994,14 @@ async function sendMessage() {
     // Set processing state (no loading overlay)
     isProcessing = true;
     
+    // Clear input immediately after sending
+    messageInput.value = '';
+    messageInput.style.height = 'auto';
+    
+    // Clear attached files immediately
+    attachedFiles = [];
+    renderFileAttachments();
+    
     try {
         let response, data;
         
@@ -1147,13 +1155,6 @@ async function sendMessage() {
         console.error('Error sending message:', error);
         showError('Failed to send message');
     } finally {
-        // Clear input and reset height
-        messageInput.value = '';
-        messageInput.style.height = 'auto';
-        
-        // Clear attached files
-        attachedFiles = [];
-        renderFileAttachments();
         
         // Clear edit mode if it was set
         if (window.editingMessageId) {
