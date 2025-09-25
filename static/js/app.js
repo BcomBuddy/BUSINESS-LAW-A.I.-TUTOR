@@ -1001,9 +1001,9 @@ async function sendMessage() {
     // Store attached files before clearing them
     const filesToSend = [...attachedFiles];
     
-    // Don't clear attached files immediately - let them show while processing
-    // attachedFiles = [];
-    // renderFileAttachments();
+    // Clear attached files immediately for UI responsiveness
+    attachedFiles = [];
+    renderFileAttachments();
     
     try {
         let response, data;
@@ -1128,13 +1128,6 @@ async function sendMessage() {
                 }
             }
             
-                // Add structured file content if available
-                if (data.structuredFileContent && data.structuredFileContent.length > 0) {
-                    // Add a delay to ensure the message is rendered first
-                    setTimeout(() => {
-                        addFileContentToMessage(data.aiMessageId, data.structuredFileContent);
-                    }, 200);
-                }
             
             // Save Q&A pair to structured history
             await saveQAEntry(message, data.reply, activeChapter);
@@ -1144,10 +1137,16 @@ async function sendMessage() {
         // Remove loading message
         removeLoadingMessage();
         
+        console.log('AI Response data:', data);
         if (data.reply) {
             // Add AI response to chat with proper ID from server
             const aiMessageId = data.aiMessageId || 'ai_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             addMessage('ai', data.reply, formatTimestamp(data.timestamp), aiMessageId);
+            
+            // Add structured file content if available (after AI message is added)
+            if (data.structuredFileContent && data.structuredFileContent.length > 0) {
+                addFileContentToMessage(aiMessageId, data.structuredFileContent);
+            }
             
             // Store last AI response for dynamic suggestions
             lastAIResponse = data.reply;
@@ -1158,9 +1157,7 @@ async function sendMessage() {
             // Scroll to bottom
             scrollToBottom();
             
-            // Clear attached files after successful response
-            attachedFiles = [];
-            renderFileAttachments();
+            // Attached files already cleared immediately after sending
             
         } else {
             showError(data.error || 'Failed to get response');
@@ -1576,15 +1573,29 @@ function addFileContentMessage(fileName, fileContent, fileType, parentMessageId,
 
 // Add file content directly to the main message
 function addFileContentToMessage(messageId, fileContents) {
-    const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+    // Try to find the message element, with a small delay if needed
+    let messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+    
     if (!messageElement) {
-        console.error(`Message element not found for ID: ${messageId}`);
+        // If not found immediately, try again after a short delay
+        setTimeout(() => {
+            messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (messageElement) {
+                addFileContentToMessageImmediate(messageElement, fileContents);
+            } else {
+                console.error(`Message element not found for ID: ${messageId} after delay`);
+            }
+        }, 100);
         return;
     }
     
+    addFileContentToMessageImmediate(messageElement, fileContents);
+}
+
+function addFileContentToMessageImmediate(messageElement, fileContents) {
     const messageContent = messageElement.querySelector('.message-content');
     if (!messageContent) {
-        console.error(`Message content not found for ID: ${messageId}`);
+        console.error(`Message content not found for message element`);
         return;
     }
     
