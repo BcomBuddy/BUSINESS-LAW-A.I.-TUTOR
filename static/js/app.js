@@ -1696,8 +1696,8 @@ function addStructuredFileContent(fileContents, parentMessageId) {
             parentMessage.parentNode.insertBefore(contentCellDiv, explanationDiv.nextSibling);
         } else {
             // Fallback: add to end of chat container
-            chatContainer.appendChild(explanationDiv);
-            chatContainer.appendChild(contentCellDiv);
+        chatContainer.appendChild(explanationDiv);
+        chatContainer.appendChild(contentCellDiv);
         }
         
         // Track message IDs
