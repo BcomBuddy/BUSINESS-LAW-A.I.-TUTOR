@@ -138,6 +138,9 @@
                 window.location.href = '/';
             } catch (error) {
                 console.error('Google sign in error:', error);
+                console.error('Error code:', error.code);
+                console.error('Error message:', error.message);
+                console.error('Current domain:', window.location.hostname);
                 showError(getErrorMessage(error.code));
             } finally {
                 googleBtn.innerHTML = originalText;
