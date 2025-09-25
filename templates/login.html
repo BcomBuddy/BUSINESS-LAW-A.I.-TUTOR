@@ -138,7 +138,22 @@
                 window.location.href = '/';
             } catch (error) {
                 console.error('Google sign in error:', error);
-                showError(getErrorMessage(error.code));
+                console.error('Error details:', {
+                    code: error.code,
+                    message: error.message,
+                    domain: window.location.hostname
+                });
+                
+                // Show more specific error messages
+                if (error.code === 'auth/unauthorized-domain') {
+                    showError('This domain is not authorized for Google Sign-In. Please contact support.');
+                } else if (error.code === 'auth/popup-closed-by-user') {
+                    showError('Sign-in was cancelled. Please try again.');
+                } else if (error.code === 'auth/network-request-failed') {
+                    showError('Network error. Please check your connection and try again.');
+                } else {
+                    showError(`Google Sign-In failed: ${error.message}`);
+                }
             } finally {
                 googleBtn.innerHTML = originalText;
                 googleBtn.disabled = false;
