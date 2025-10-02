@@ -1308,6 +1308,8 @@ function addMessage(type, content, timestamp = null, messageId = null) {
     const messageContentContainer = document.createElement('div');
     messageContentContainer.className = 'message-content-container';
     
+    console.log(`Creating message content container for ${type} message`);
+    
     const messageContent = document.createElement('div');
     messageContent.className = 'message-content';
     
@@ -1328,6 +1330,7 @@ function addMessage(type, content, timestamp = null, messageId = null) {
         messageMenu.title = 'Message options';
         messageMenu.onclick = (e) => toggleMessageMenu(finalMessageId, e);
         
+        console.log(`Adding menu for ${type} message with ID: ${finalMessageId}`);
         messageContentContainer.appendChild(messageMenu);
     }
     

@@ -29,7 +29,7 @@ chat_bp = Blueprint('chat', __name__)
 genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
 
 # Initialize Gemini model
-model = genai.GenerativeModel('gemini-1.5-flash', generation_config={
+model = genai.GenerativeModel('gemini-2.5-flash', generation_config={
     'max_output_tokens': 8192,
     'temperature': 0.7
 })
@@ -372,6 +372,8 @@ def chat():
             logger.info(f"Added fileAttachments to user message: {len(enhanced_attachments)} attachments")
         
         user_message_id = save_chat_message(user_id, user_message_data, chat_id)
+        if not user_message_id:
+            return jsonify({'error': 'Failed to save user message'}), 500
         
 
         # Save AI message with structured file content for persistence
@@ -391,6 +393,8 @@ def chat():
             logger.info("No structured file content to add to AI message")
         
         ai_message_id = save_chat_message(user_id, ai_message_data, chat_id)
+        if not ai_message_id:
+            return jsonify({'error': 'Failed to save AI message'}), 500
 
         update_chat_timestamp(user_id, chat_id)
         
